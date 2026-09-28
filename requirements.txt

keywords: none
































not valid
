@@ -1,0 +1,50 @@
+import os
+import logging
+
+import discord
+import requests
+from dotenv import load_dotenv
+
+load_dotenv()
+
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+intents = discord.Intents.default()
+intents.members = True
+bot = discord.Client(intents=intents)
+
+TELEGRAM_URL = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+
+
+def send_to_telegram(username: str, guild_name: str):
+    message = f"🎉 Welcome to {guild_name}!\n\nNew member: {username}"
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": message,
+    }
+    try:
+        response = requests.post(TELEGRAM_URL, data=payload, timeout=10)
+        response.raise_for_status()
+        logging.info("Telegram message sent for %s", username)
+    except Exception as e:
+        logging.exception("Failed to send Telegram message: %s", e)
+
+
+@bot.event
+async def on_ready():
+    logging.info("Logged in as %s (%s)", bot.user.name, bot.user.id)
+
+
+@bot.event
+async def on_member_join(member):
+    guild_name = member.guild.name
+    username = member.name
+    logging.info("Member joined: %s in %s", username, guild_name)
+    send_to_telegram(username, guild_name)
+
+
+bot.run(DISCORD_TOKEN)
